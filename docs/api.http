@@ -1,0 +1,31 @@
+# Sample requests for the VS Code REST Client extension (or JetBrains HTTP client).
+@base = http://localhost:3000
+
+### Register
+POST {{base}}/auth/register
+Content-Type: application/json
+
+{ "email": "alice@example.com", "name": "Alice", "password": "correct horse battery" }
+
+### Log in (copy accessToken and refreshToken from the response)
+# @name login
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "alice@example.com", "password": "correct horse battery" }
+
+### Current user
+GET {{base}}/me
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### Refresh (each refresh token works once)
+POST {{base}}/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "{{login.response.body.refreshToken}}" }
+
+### Log out (revokes the session)
+POST {{base}}/auth/logout
+Content-Type: application/json
+
+{ "refreshToken": "{{login.response.body.refreshToken}}" }
