@@ -1,3 +1,4 @@
+// Token helpers: signed JWT access tokens and opaque refresh tokens.
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
 
@@ -30,10 +31,15 @@ export function createRefreshToken() {
   return randomBytes(32).toString("base64url");
 }
 
+/**
+ * Plain SHA-256 is enough here (no salt, no scrypt): the token is 256 random bits,
+ * so there is nothing to guess, unlike a password. It also keeps lookups by hash simple.
+ */
 export function hashToken(token) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+/** One family id per login. Every rotated refresh token keeps it. */
 export function newTokenFamily() {
   return randomUUID();
 }

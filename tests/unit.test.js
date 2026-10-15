@@ -1,3 +1,4 @@
+// Unit tests for password hashing and config loading. Run: npm test
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { hashPassword, verifyPassword } from "../src/auth/password.js";

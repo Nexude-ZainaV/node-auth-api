@@ -1,3 +1,4 @@
+// Builds the Express app: security middleware, JSON parsing, routes and error handling.
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
@@ -21,6 +22,7 @@ export function createApp({ db, config }) {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet()); // security headers: CSP, HSTS, no-sniff, frame protection...
+  // No allowlist configured means no cross-origin browser access at all.
   app.use(cors({ origin: config.CORS_ORIGINS.length ? config.CORS_ORIGINS : false }));
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
 

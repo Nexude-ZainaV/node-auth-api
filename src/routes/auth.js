@@ -1,3 +1,4 @@
+// The /auth/* and /me routes: request schemas, rate limiting and status codes.
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
@@ -7,6 +8,7 @@ import { requireAuth, validateBody } from "../middleware.js";
 const PASSWORD_MIN_LENGTH = 12; // NIST SP 800-63B favours length over composition rules
 const PASSWORD_MAX_LENGTH = 128; // bounds hashing cost per request
 
+// 254 characters is the longest address SMTP allows.
 const email = z.string().trim().toLowerCase().max(254).pipe(z.email("Enter a valid email address."));
 const password = z
   .string()
@@ -14,6 +16,7 @@ const password = z
   .max(PASSWORD_MAX_LENGTH, `Password must be at most ${PASSWORD_MAX_LENGTH} characters.`);
 
 const registerSchema = z.object({ email, name: z.string().trim().min(1, "Name is required.").max(80), password });
+// Login only checks that a password is present and not too long. The 12-character minimum is a registration rule.
 const loginSchema = z.object({ email, password: z.string().min(1).max(PASSWORD_MAX_LENGTH) });
 const refreshSchema = z.object({ refreshToken: z.string().min(1).max(200) });
 

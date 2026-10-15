@@ -1,3 +1,4 @@
+// SQLite schema and connection setup, using the synchronous node:sqlite API.
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -30,6 +31,7 @@ const SCHEMA = `
 export function openDatabase(path) {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
+  // Foreign keys are off by default in SQLite. WAL lets reads continue during a write.
   db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
   db.exec(SCHEMA);
   return db;

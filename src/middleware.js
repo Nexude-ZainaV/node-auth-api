@@ -1,3 +1,4 @@
+// Middleware shared by the routes: body validation, bearer auth, 404 and the error handler.
 import { HttpError } from "./http-error.js";
 import { verifyAccessToken } from "./auth/tokens.js";
 
@@ -7,6 +8,7 @@ export function validateBody(schema) {
     const result = schema.safeParse(req.body ?? {});
     if (!result.success) {
       const details = {};
+      // One message per field (the first one), keyed by its path, e.g. { email: "..." }.
       for (const issue of result.error.issues) details[issue.path.join(".") || "body"] ??= issue.message;
       return next(new HttpError(400, "Validation failed.", details));
     }
@@ -31,6 +33,7 @@ export function requireAuth({ jwtSecret }) {
   };
 }
 
+/** Catch-all for unmatched routes, so a 404 is JSON like every other error. */
 export function notFound(req, _res, next) {
   next(new HttpError(404, `No route for ${req.method} ${req.path}`));
 }
@@ -44,6 +47,7 @@ export function errorHandler(error, _req, res, _next) {
   if (error instanceof HttpError) {
     return res.status(error.status).json({ error: error.message, ...(error.details && { details: error.details }) });
   }
+  // body-parser errors from express.json(): bad JSON and the size limit.
   if (error.type === "entity.parse.failed") return res.status(400).json({ error: "Malformed JSON body." });
   if (error.type === "entity.too.large") return res.status(413).json({ error: "Request body too large." });
 

@@ -1,3 +1,4 @@
+// Environment config, parsed and validated once at startup (see .env.example).
 import { z } from "zod";
 
 // Fail fast at startup on missing or weak configuration, instead of at the first request.

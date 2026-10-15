@@ -1,3 +1,4 @@
+// Auth business rules on top of the users and refresh_tokens tables (schema in db.js).
 import { DUMMY_HASH, hashPassword, verifyPassword } from "./password.js";
 import { createRefreshToken, hashToken, newTokenFamily, signAccessToken } from "./tokens.js";
 import { HttpError } from "../http-error.js";
@@ -24,6 +25,7 @@ export class AuthService {
         .run(email, name, passwordHash, new Date().toISOString());
       return this.findUser(Number(result.lastInsertRowid));
     } catch (error) {
+      // The UNIQUE index on email is the duplicate check. A SELECT first would race with a parallel signup.
       if (String(error.message).includes("UNIQUE")) throw new HttpError(409, "An account with this email already exists.");
       throw error;
     }
@@ -52,6 +54,7 @@ export class AuthService {
       this.revokeFamily(row.family_id);
       throw new HttpError(401, "Refresh token was already used. Please sign in again.");
     }
+    // Mark this token as spent before handing out its replacement.
     this.db.prepare("UPDATE refresh_tokens SET used_at = ? WHERE token_hash = ?").run(now, row.token_hash);
     return this.issueTokens(this.findUser(row.user_id), row.family_id);
   }
@@ -67,6 +70,7 @@ export class AuthService {
     return row ? { id: row.id, email: row.email, name: row.name, createdAt: row.created_at } : undefined;
   }
 
+  /** Saves a new refresh token in the login's family and signs a matching access token. */
   issueTokens(user, familyId) {
     const refreshToken = createRefreshToken();
     this.db
@@ -81,6 +85,7 @@ export class AuthService {
     };
   }
 
+  /** Ends a login session: every token in the family stops working. */
   revokeFamily(familyId) {
     this.db
       .prepare("UPDATE refresh_tokens SET revoked_at = ? WHERE family_id = ? AND revoked_at IS NULL")

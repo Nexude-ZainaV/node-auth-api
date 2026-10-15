@@ -1,3 +1,5 @@
+// HTTP tests for every route, including token attacks and hardening checks.
+// Each test gets a fresh app and in-memory database. Run: npm test
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
 import jwt from "jsonwebtoken";

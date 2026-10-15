@@ -1,3 +1,4 @@
+// ESLint flat config: the recommended rules plus a few strict ones. Run: npm run lint
 import js from "@eslint/js";
 import globals from "globals";
 

@@ -6,10 +6,11 @@
 ![JWT](https://img.shields.io/badge/auth-JWT%20%2B%20refresh%20rotation-orange)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
-A production-style authentication service: registration, login, short-lived JWT
-access tokens, rotating refresh tokens with reuse detection, logout, and a protected
-`/me` route. Passwords are hashed with scrypt from `node:crypto`, and data is stored
-in SQLite through the built-in `node:sqlite` module.
+An authentication service with registration, login, short-lived JWT access tokens,
+rotating refresh tokens with reuse detection, logout and a protected `/me` route.
+I hash passwords with scrypt from `node:crypto` and store data in SQLite through the
+built-in `node:sqlite` module, so the only runtime dependencies are Express, a few
+security middlewares, `jsonwebtoken` and Zod.
 
 ## Endpoints
 
@@ -23,28 +24,29 @@ in SQLite through the built-in `node:sqlite` module.
 | `GET` | `/health` | | `200 { status: "ok" }` |
 
 Errors are JSON: `{ "error": "...", "details": { "field": "message" } }` with `400`,
-`401`, `404`, `409`, `413` or `429`. Sample requests: [docs/api.http](docs/api.http).
+`401`, `404`, `409`, `413` or `429`. There are sample requests in
+[docs/api.http](docs/api.http).
 
 ## Security design
 
 | Concern | Approach |
 |---|---|
-| Password storage | scrypt (memory-hard) with a per-user random salt; parameters stored with the hash so they can be raised later; constant-time comparison |
-| Password policy | 12 to 128 characters (length over composition rules, per NIST SP 800-63B); the max bounds hashing cost |
-| User enumeration | Login returns the same message for "no such user" and "wrong password", and runs a dummy hash for unknown emails so response time is the same |
-| Access tokens | JWT, 15 minutes, HS256 with the algorithm pinned (rejects `alg: none`), issuer and audience checked |
-| Refresh tokens | Random 256-bit opaque tokens, stored only as SHA-256 hashes; **rotated on every use**; replaying a used token revokes every token from that login |
-| Brute force | `express-rate-limit` on the auth routes (20 attempts / 15 min / IP, configurable) |
-| Transport and headers | `helmet` (CSP, HSTS, nosniff, frame protection), `x-powered-by` disabled, CORS limited to an allowlist |
-| Input | Zod validation on every body; emails trimmed and lower-cased; 10 KB JSON body limit |
-| Errors | Unknown errors are logged server-side and returned as a generic 500 (no stack traces) |
-| Configuration | Validated at startup; the server refuses to start with a missing or short `JWT_SECRET` |
+| Password storage | scrypt (memory-hard) with a random salt per user. The parameters are stored with the hash so they can be raised later. Comparison is constant-time. |
+| Password policy | 12 to 128 characters. NIST SP 800-63B favours length over composition rules, and the upper limit caps the hashing cost. |
+| User enumeration | Login gives the same message for "no such user" and "wrong password", and runs a dummy hash for unknown emails so both take the same time. |
+| Access tokens | JWT, 15 minutes, HS256 with the algorithm pinned (so `alg: none` is rejected), issuer and audience checked. |
+| Refresh tokens | Random 256-bit opaque tokens, stored only as SHA-256 hashes. Each one is rotated on use, and replaying a used token revokes every token from that login. |
+| Brute force | `express-rate-limit` on the auth routes (20 attempts per 15 minutes per IP, configurable). |
+| Transport and headers | `helmet` (CSP, HSTS, nosniff, frame protection), `x-powered-by` off, CORS limited to an allowlist. |
+| Input | Zod validates every body. Emails are trimmed and lower-cased. JSON bodies are capped at 10 KB. |
+| Errors | Unknown errors are logged on the server and returned as a generic 500, with no stack trace. |
+| Configuration | Validated at startup. The server won't start with a missing or short `JWT_SECRET`. |
 
-Known trade-off: `/auth/register` answers `409` for an existing email, which reveals
-that the email is registered. Hiding it means switching to email verification
-("check your inbox" either way), which needs an email provider.
+One trade-off I accepted: `/auth/register` answers `409` for an existing email, which
+tells the caller that the email is registered. Hiding that means switching to email
+verification ("check your inbox" either way), and that needs an email provider.
 
-## Architecture
+## Layout
 
 ```
 src/server.js         entry point: config, database, listen, graceful shutdown
@@ -58,12 +60,14 @@ src/auth/tokens.js    JWT and refresh token helpers
 src/middleware.js     validation, bearer auth, 404 and error handling
 ```
 
-`createApp` takes its dependencies as arguments, so each test builds an app with its
-own in-memory database and drives it with supertest, no network or cleanup needed.
+`createApp` takes its dependencies as arguments. Each test builds its own app with an
+in-memory database and drives it with supertest, so there's no network and nothing to
+clean up.
 
 ## Run it
 
-Requires Node.js 22.13+ (`node:sqlite` prints an "experimental" warning, which is expected).
+You need Node.js 22.13 or newer. `node:sqlite` prints an "experimental" warning on
+startup; that's expected.
 
 ```bash
 npm install
